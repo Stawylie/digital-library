@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
-const User = require('../models/user');
+const User = require('../models/User');
 
 function signToken(payload, opts = {}) {
   const secret = process.env.JWT_SECRET || 'dev_insecure_secret_change_me';

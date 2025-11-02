@@ -10,6 +10,7 @@ function buildSequelize() {
         DB_NAME,
         DB_USER,
         DB_PASS,
+        DB_PASSWORD,
         PGHOST,
         PGPORT,
         PGDATABASE,
@@ -17,6 +18,8 @@ function buildSequelize() {
         PGPASSWORD,
         PGSSL
     } = process.env;
+
+    const resolvedDbPass = DB_PASS || DB_PASSWORD;
 
     const commonOptions = {
         dialect: 'postgres',
@@ -40,10 +43,10 @@ function buildSequelize() {
     }
 
     // 2) Discrete DB_* variables
-    const hasDbDiscrete = DB_HOST && DB_NAME && DB_USER && (DB_PASS != null && DB_PASS !== '');
+    const hasDbDiscrete = DB_HOST && DB_NAME && DB_USER && (resolvedDbPass != null && resolvedDbPass !== '');
     if (hasDbDiscrete) {
         const port = DB_PORT ? parseInt(DB_PORT, 10) : 5432;
-        return new Sequelize(DB_NAME, DB_USER, DB_PASS, {
+        return new Sequelize(DB_NAME, DB_USER, resolvedDbPass, {
             host: DB_HOST,
             port,
             ...commonOptions,
@@ -64,7 +67,7 @@ function buildSequelize() {
     // If we reach here, config is missing
     const msg = 'Database configuration missing. Provide one of:\n' +
         '- DATABASE_URL\n' +
-        '- DB_HOST, DB_NAME, DB_USER, DB_PASS (and optional DB_PORT, PGSSL)\n' +
+        '- DB_HOST, DB_NAME, DB_USER, DB_PASS or DB_PASSWORD (and optional DB_PORT, PGSSL)\n' +
         '- PGHOST, PGDATABASE, PGUSER, PGPASSWORD (and optional PGPORT, PGSSL)';
     throw new Error(msg);
 }

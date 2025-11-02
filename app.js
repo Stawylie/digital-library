@@ -26,7 +26,9 @@ app.use(express.urlencoded({ extended: false }));
 // Serve static files (e.g., public/admin.html)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', apiRoutes);
-
+app.get('/healthz', (req, res) => {
+    res.status(200).send('OK');
+});
 app.get('/user/home', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/user-home.html'));
 });

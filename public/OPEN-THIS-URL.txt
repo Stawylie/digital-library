@@ -1,0 +1,10 @@
+For this run, your server printed:
+
+Server listening on http://localhost:3002
+
+Open these links in your browser:
+- Admin dashboard: http://localhost:3002/admin  (or http://localhost:3002/admin.html)
+- Config health: http://localhost:3002/health/config
+- Database health: http://localhost:3002/health/db
+
+Tip: On the next restart, read the console line again. If port 3000 is busy, the app will auto-pick 3001..3010 and print the final URL to use.

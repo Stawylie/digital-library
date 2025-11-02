@@ -1,0 +1,113 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to bottom right, #e0f7fa, #ffffff);
+    margin: 0;
+    padding: 40px;
+}
+
+h1 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#search-bar {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+}
+
+#search-bar input {
+    width: 300px;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.book {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: flex-start;
+    transition: transform 0.2s ease;
+}
+
+.book:hover {
+    transform: scale(1.02);
+}
+
+.book img {
+    max-width: 120px;
+    margin-right: 20px;
+    border-radius: 8px;
+}
+
+.book h2 {
+    margin: 0 0 10px;
+}
+
+.book p {
+    margin: 5px 0;
+}
+
+#genre-filters {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#genre-filters button {
+    margin: 0 5px;
+    padding: 8px 16px;
+    border: none;
+    background-color: #007acc;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+#genre-filters button:hover {
+    background-color: #005fa3;
+}
+
+#login-bar {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+#login-bar button {
+    padding: 8px 16px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+#login-bar button:hover {
+    background-color: #388e3c;
+}
+
+.borrow-btn {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background-color: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.borrow-btn:hover {
+    background-color: #e68900;
+}
+

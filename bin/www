@@ -1,0 +1,128 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var db = require('../models');
+var debug = require('debug')('digital-library:server');
+var http = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+// Automatic port fallback: if the chosen port is busy, try the next ones (e.g., 3001..3010)
+var initialPort = port;
+var maxFallbackPort = parseInt(process.env.PORT_FALLBACK_MAX || '3010', 10);
+var triedPorts = new Set([String(port)]);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+/**
+ * Listen on provided port, with automatic fallback if the port is in use.
+ */
+
+function startListening(p) {
+    app.set('port', p);
+    port = p;
+
+    db.sequelize.sync().then(() => {
+        console.log('✅ Database synced');
+        server.listen(p);
+    }).catch(err => {
+        console.error('❌ Sequelize sync failed:', err);
+        process.exit(1);
+    });
+}
+
+server.on('error', onError);
+server.on('listening', onListening);
+
+startListening(port);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  function tryNextPort() {
+    var currentPortNum = typeof port === 'string' ? parseInt(port, 10) : port;
+    var next = currentPortNum + 1;
+    while (next <= maxFallbackPort && triedPorts.has(String(next))) {
+      next++;
+    }
+    if (next <= maxFallbackPort) {
+      console.warn(bind + ' is already in use, trying port ' + next + ' (set PORT to override)');
+      triedPorts.add(String(next));
+      setTimeout(function () { startListening(next); }, 50);
+    } else {
+      console.error('No available ports up to ' + maxFallbackPort + '. Exiting.');
+      process.exit(1);
+    }
+  }
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      tryNextPort();
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  var finalPort = typeof addr === 'string' ? addr : addr.port;
+  debug('Listening on ' + bind);
+  console.log('Server listening on http://localhost:' + finalPort);
+  console.log('Tip: Health/config → http://localhost:' + finalPort + '/health/config');
+}

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Digital Library</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<h1>📚 Digital Library</h1>
+
+<div id="genre-filters">
+    <button onclick="handleLogin()">Login</button>
+    <button onclick="filterByGenre('All')">All</button>
+    <button onclick="filterByGenre('Programming')">Programming</button>
+    <button onclick="filterByGenre('Software Engineering')">Software Engineering</button>
+</div>
+
+<div id="search-bar">
+    <input type="text" id="searchInput" placeholder="Search by title or author...">
+</div>
+
+<div id="book-list"></div>
+
+<script>
+    let allBooks = [];
+
+    fetch('/api/books')
+        .then(res => res.json())
+        .then(books => {
+            allBooks = books;
+            renderBooks(books);
+        });
+
+    function renderBooks(books) {
+        const container = document.getElementById('book-list');
+        container.innerHTML = '';
+        books.forEach(book => {
+            const div = document.createElement('div');
+            div.className = 'book';
+            div.innerHTML = `
+          <img src="${book.coverUrl}" alt="${book.title}" />
+          <div>
+            <h2>${book.title}</h2>
+            <p><strong>Author:</strong> ${book.author}</p>
+            <p><strong>Genre:</strong> ${book.genre}</p>
+            <p>${book.description}</p>
+            <p class="badge ${book.available ? 'available' : 'unavailable'}">
+              ${book.available ? '✅ Available' : '❌ Checked Out'}
+            </p>
+                <button class="borrow-btn" onclick="toggleBorrow(${book.id})">
+      ${book.available ? 'Borrow' : 'Return'}
+    </button>
+
+          </div>`;
+            container.appendChild(div);
+        });
+    }
+
+    function filterByGenre(genre) {
+        if (genre === 'All') {
+            renderBooks(allBooks);
+        } else {
+            const filtered = allBooks.filter(book => book.genre === genre);
+            renderBooks(filtered);
+        }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const query = this.value.toLowerCase();
+        const filtered = allBooks.filter(book =>
+            book.title.toLowerCase().includes(query) ||
+            book.author.toLowerCase().includes(query)
+        );
+        renderBooks(filtered);
+    });
+
+    function handleLogin() {
+        window.location.href = '/login';
+    }
+    function toggleBorrow(bookId) {
+        allBooks = allBooks.map(book => {
+            if (book.id === bookId) {
+                book.available = !book.available;
+            }
+            return book;
+        });
+        renderBooks(allBooks);
+    }
+</script>
+</body>
+</html>

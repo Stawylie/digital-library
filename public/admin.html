@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+<h1>Admin Dashboard</h1>
+<div id="statusBar" style="padding:8px 12px;margin:8px 0;border-radius:4px;background:#fff3cd;color:#664d03;border:1px solid #ffecb5;display:none;">
+    Checking backend status...
+</div>
+<div style="margin:6px 0 12px 0; font-size:13px;">
+    Having trouble? <button id="runDiagBtn" type="button">Run diagnostics</button>
+</div>
+<pre id="diagOut" style="display:none; white-space:pre-wrap; background:#f6f8fa; padding:8px; border:1px solid #eee; border-radius:6px;"></pre>
+
+<!-- Send Notification -->
+<h2>Send Notification</h2>
+<form id="notifyForm">
+    <input type="number" name="userId" placeholder="User ID" required />
+    <input type="text" name="message" placeholder="Notification Message" required />
+    <button type="submit">Send Notification</button>
+</form>
+
+<!-- View Notifications -->
+<h2>View Notifications</h2>
+<form id="viewForm">
+    <input type="number" name="userId" placeholder="User ID" required />
+    <button type="submit">View Notifications</button>
+</form>
+
+<ul id="notificationList"></ul>
+
+<script>
+    let API_BASE = null;
+
+    function isHttpOrigin() {
+        return window.location.protocol === 'http:' || window.location.protocol === 'https:';
+    }
+
+    async function ensureApiBase() {
+        if (API_BASE) return API_BASE;
+        if (isHttpOrigin()) {
+            API_BASE = window.location.origin;
+            return API_BASE;
+        }
+        const candidatePorts = [];
+        for (let p = 3000; p <= 3010; p++) candidatePorts.push(p);
+        for (const port of candidatePorts) {
+            const base = `http://localhost:${port}`;
+            try {
+                const res = await fetch(`${base}/health/config`, { method: 'GET' });
+                if (res.ok) {
+                    API_BASE = base;
+                    const hint = document.createElement('div');
+                    hint.style.fontSize = '12px';
+                    hint.style.color = '#555';
+                    hint.textContent = `Connected to backend at ${API_BASE}`;
+                    document.body.insertBefore(hint, document.body.firstChild);
+                    return API_BASE;
+                }
+            } catch (_) {}
+        }
+        throw new Error('Could not locate backend server on localhost:3000-3010');
+    }
+
+    // Send Notification
+    document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = e.target.userId.value;
+        const message = e.target.message.value;
+
+        try {
+            const base = await ensureApiBase();
+            const res = await fetch(`${base}/api/admin/notify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, message })
+            });
+
+            const text = await res.text();
+            let data;
+            try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+
+            if (!res.ok) {
+                alert(`Failed to send notification (HTTP ${res.status})\n` + JSON.stringify(data, null, 2));
+                return;
+            }
+
+            alert('Notification sent:\n' + JSON.stringify(data, null, 2));
+            e.target.reset();
+        } catch (err) {
+            alert('Network error while sending notification: ' + err.message);
+        }
+    });
+
+    // View Notifications
+    document.getElementById('viewForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = e.target.userId.value;
+
+        const list = document.getElementById('notificationList');
+        list.innerHTML = '';
+
+        try {
+            const base = await ensureApiBase();
+            const res = await fetch(`${base}/api/admin/notifications/${userId}`);
+            const text = await res.text();
+            let data;
+            try { data = text ? JSON.parse(text) : []; } catch { data = { raw: text }; }
+
+            if (!res.ok) {
+                const msg = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
+                alert(`Failed to fetch notifications (HTTP ${res.status})\n` + msg);
+                return;
+            }
+
+            if (Array.isArray(data)) {
+                if (data.length === 0) {
+                    const empty = document.createElement('li');
+                    empty.textContent = 'No notifications found for this user.';
+                    list.appendChild(empty);
+                    return;
+                }
+
+                data.forEach(n => {
+                    const item = document.createElement('li');
+                    item.style.padding = '6px';
+                    item.style.borderBottom = '1px solid #ddd';
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    item.style.alignItems = 'center';
+
+                    const left = document.createElement('div');
+                    const when = n.createdAt ? new Date(n.createdAt).toLocaleString() : '(no date)';
+                    left.innerHTML = `<strong>${when}</strong><br>${n.message}`;
+
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = 'Delete';
+                    delBtn.style.marginLeft = '12px';
+                    delBtn.style.background = '#dc3545';
+                    delBtn.style.color = '#fff';
+                    delBtn.style.border = 'none';
+                    delBtn.style.padding = '4px 8px';
+                    delBtn.style.borderRadius = '4px';
+                    delBtn.style.cursor = 'pointer';
+
+                    delBtn.addEventListener('click', async () => {
+                        const res = await fetch(`${base}/api/admin/notifications/${n.id}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (res.ok) {
+                            item.remove();
+                        } else {
+                            alert('Failed to delete notification');
+                        }
+                    });
+
+                    item.appendChild(left);
+                    item.appendChild(delBtn);
+                    list.appendChild(item);
+                });
+            } else {
+                const item = document.createElement('li');
+                item.textContent = 'Unexpected response: ' + JSON.stringify(data, null, 2);
+                list.appendChild(item);
+            }
+        } catch (err) {
+            const item = document.createElement('li');
+            item.textContent = 'Network error while fetching notifications: ' + err.message;
+            list.appendChild(item);
+        }
+    });
+
+    // Status bar updates using /health/progress
+    const statusEl = document.getElementById('statusBar');
+    function setStatus({ level, text }) {
+        statusEl.style.display = 'block';
+        if (level === 'ok') {
+            statusEl.style.background = '#d1e7dd';
+            statusEl.style.color = '#0f5132';
+            statusEl.style.borderColor = '#badbcc';
+        } else if (level === 'warn') {
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#664d03';
+            statusEl.style.borderColor = '#ffecb5';
+        } else {
+            statusEl.style.background = '#f8d7da';
+            statusEl.style.color = '#842029';
+            statusEl.style.borderColor = '#f5c2c7';
+        }
+        statusEl.textContent = text;
+    }
+
+    async function pingProgress() {
+        try {
+            const base = await ensureApiBase();
+            const controller = new AbortController();
+            const t = setTimeout(() => controller.abort(), 2500);
+            const res = await fetch(`${base}/health/progress`, { signal: controller.signal });
+            clearTimeout(t);
+            const data = await res.json();
+
+            if (data.ok && data.configReady && data.db && data.db.available) {
+                setStatus({ level: 'ok', text: `All systems go. DB latency ${data.db.latencyMs ?? '?'} ms. Uptime ${data.uptimeSec}s.` });
+            } else if (!data.configReady) {
+                setStatus({ level: 'warn', text: 'Server running without database configuration. Limited mode.' });
+            } else if (data.db && data.db.reason === 'timeout') {
+                setStatus({ level: 'warn', text: 'Database ping timed out. Retrying...' });
+            } else {
+                setStatus({ level: 'error', text: 'Backend reachable, but database unavailable. Check server logs.' });
+            }
+        } catch (e) {
+            setStatus({ level: 'error', text: 'Cannot reach backend service. Is the server running?' });
+        }
+    }
+
+    pingProgress();
+    setInterval(pingProgress, 5000);
+
+    (function initDiagnostics(){
+        const btn = document.getElementById('runDiagBtn');
+        const out = document.getElementById('diagOut');
+        if (!btn || !out) return;
+        btn.addEventListener('click', async () => {
+            try {
+                const base = await ensureApiBase();
+                const res = await fetch(`${base}/health/doctor`);
+                const data = await res.json().catch(() => ({}));
+                out.style.display = 'block';
+
+                out.style.display = 'block';
+                out.textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                out.style.display = 'block';
+                out.textContent = `Failed to fetch diagnostics: ${e.message}`;
+            }
+        });
+    })();
+</script>
+</body>
+</html>
